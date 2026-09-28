@@ -366,7 +366,7 @@
     line-height:1.6;
   }
 
-/* ===== ALARMES (portées depuis Qitari) ===== */
+/* ===== ALARMES ===== */
 .al-card{margin-top:18px;padding:14px;border:1.5px solid var(--sea-deep);border-radius:12px;background:rgba(255,255,255,.72);backdrop-filter:blur(4px);}
 .al-card h3{margin:0 0 8px;font-size:15px;color:var(--sea-deep);}
 .al-row{display:flex;gap:8px;flex-wrap:wrap;}
@@ -387,7 +387,7 @@
 #alUserDot{fill:#2f8fd1;stroke:#fff;stroke-width:2.5;}
 @media (prefers-reduced-motion:reduce){#alertOverlay,#al3{animation:none}}
 
-/* ===== ALARMES DE QITARI (portage) — éléments ajoutés ===== */
+/* ===== ALARMES — éléments ajoutés ===== */
 #alertOverlay.criticalMinute{animation:alFlash .22s infinite alternate;}
 #alE{font-size:16px;min-height:20px;}
 #alE .cdNum{display:inline-block;font-size:40px;font-weight:900;color:#fff;text-shadow:0 0 22px rgba(255,255,255,.75);font-variant-numeric:tabular-nums;}
@@ -533,7 +533,7 @@
 
     <div class="al-card" id="alCard">
       <h3 id="alTitle"></h3>
-      <div class="al-row"><button class="al-btn" id="alToggle" type="button"></button><button class="al-btn ghost" id="alTest" type="button"></button></div>
+      <div class="al-row"><button class="al-btn" id="alToggle" type="button"></button></div>
       <div class="al-status" id="alStatus"></div>
       <div class="al-note" id="alNote"></div>
       <div id="kzHint"></div>
@@ -542,7 +542,7 @@
   </main>
 
   <footer class="foot" id="footerText">
-    Horaires TGM (SNCFT) reconstitués à partir du fichier fourni · Trajet complet estimé à 35 min · Heures aux stations intermédiaires calculées au prorata de la distance depuis le terminus.
+    Horaires TGM (Transtu) reconstitués à partir du fichier fourni · Trajet complet estimé à 35 min · Heures aux stations intermédiaires calculées au prorata de la distance depuis le terminus.
   </footer>
 </div>
 
@@ -557,7 +557,7 @@ const I18N = {
     btnWeekday:"Lun. – Sam.", btnSunday:"Dimanche",
     lblNextDep:"Prochain départ",
     legendAller:"rame — sens aller", legendRetour:"rame — sens retour",
-    footer:"Horaires TGM (SNCFT) reconstitués à partir du fichier fourni · Trajet complet estimé à 35 min · Heures aux stations intermédiaires calculées au prorata de la distance depuis le terminus.",
+    footer:"Horaires TGM (Transtu) reconstitués à partir du fichier fourni · Trajet complet estimé à 35 min · Heures aux stations intermédiaires calculées au prorata de la distance depuis le terminus.",
     terminus:"Heure officielle au terminus.",
     estimate:(name,pct,min)=>'Heure estimée à '+name+', à '+pct+'% du trajet (~'+min+' min après le départ du terminus).',
     countdown:(sec)=>{ if(sec<60) return 'dans '+sec+' s'; const m=Math.floor(sec/60), h=Math.floor(m/60), mm=m%60; return h>0 ? 'dans '+h+' h '+mm+' min' : 'dans '+mm+' min'; },
@@ -574,7 +574,7 @@ const I18N = {
     btnWeekday:"Mon – Sat", btnSunday:"Sunday",
     lblNextDep:"Next departure",
     legendAller:"train — outbound", legendRetour:"train — inbound",
-    footer:"TGM (SNCFT) schedule reconstructed from the provided file · Full trip estimated at 35 min · Times at intermediate stations prorated to distance from the terminus.",
+    footer:"TGM (Transtu) schedule reconstructed from the provided file · Full trip estimated at 35 min · Times at intermediate stations prorated to distance from the terminus.",
     terminus:"Official time at the terminus.",
     estimate:(name,pct,min)=>'Estimated time at '+name+', '+pct+'% of the trip (~'+min+' min after departing the terminus).',
     countdown:(sec)=>{ if(sec<60) return 'in '+sec+'s'; const m=Math.floor(sec/60), h=Math.floor(m/60), mm=m%60; return h>0 ? 'in '+h+'h '+mm+'m' : 'in '+mm+'m'; },
@@ -591,7 +591,7 @@ const I18N = {
     btnWeekday:"الإثنين – السبت", btnSunday:"الأحد",
     lblNextDep:"المغادرة القادمة",
     legendAller:"قطار — اتجاه الذهاب", legendRetour:"قطار — اتجاه العودة",
-    footer:"توقيت قِطاري (الشركة الوطنية للسكك الحديدية التونسية) أُعيد بناؤه من الملف المرفق · مدة الرحلة الكاملة مُقدّرة بـ35 دقيقة · أوقات المحطات الوسيطة محسوبة بالتناسب مع المسافة من المحطة الطرفية.",
+    footer:"توقيت TGM (شركة نقل تونس) أُعيد بناؤه من الملف المرفق · مدة الرحلة الكاملة مُقدّرة بـ35 دقيقة · أوقات المحطات الوسيطة محسوبة بالتناسب مع المسافة من المحطة الطرفية.",
     terminus:"التوقيت الرسمي في المحطة الطرفية.",
     estimate:(name,pct,min)=>'وقت تقديري في '+name+'، عند '+pct+'٪ من الرحلة (~'+min+' د بعد المغادرة من المحطة الطرفية).',
     countdown:(sec)=>{ if(sec<60) return 'خلال '+sec+' ث'; const m=Math.floor(sec/60), h=Math.floor(m/60), mm=m%60; return h>0 ? 'خلال '+h+' س '+mm+' د' : 'خلال '+mm+' د'; },
@@ -999,7 +999,7 @@ document.querySelectorAll('.lang-btn').forEach(btn=>{
 </div>
 
 <script>
-/* ===== ALARMES DE QITARI — portage complet des alarmes à source théorique, appliqué au TGM =====
+/* ===== ALARMES TGM (horaire théorique) =====
    Modules (chacun indépendant, propre état / propre son) :
    1) Alarme principale (plein écran) : rame ≤ 1 km de vous ET vous ≤ 150 m de la voie ; verrou dur après 3 lectures
       consécutives du même train ; compteur distance + ETA (vitesse d'approche) ; bips, escalade dernière minute ;
@@ -1007,8 +1007,8 @@ document.querySelectorAll('.lang-btn').forEach(btn=>{
    2) Alarme « 3 minutes » (bandeau du haut, carte état) : prochain passage théorique à votre segment ≤ 3 min ;
       sirène + rappel vocal toutes les 20 s ; arrêt 30 min après le passage théorique à la station, ou si > 150 m de la voie.
    3) Alarme « voie + horaire théorique » (bandeau violet) : ≤ 150 m de la voie ET train théorique à la station la plus proche dans ≤ 3 min.
-   4) Alarme « train théorique non confirmé SNCFT Live » (bandeau pourpre) : rame ≤ 150 m (arrêt 170 m) ET arrivée estimée ≤ 3 min.
-   5) Alarme « théorique corrigé du retard, confirmé ou non » (bandeau sarcelle) : même double condition (150/170 m, ≤ 3 min).
+   4) Alarme « train théorique (horaire seul) » (bandeau pourpre) : rame ≤ 150 m (arrêt 170 m) ET arrivée estimée ≤ 3 min.
+   5) Alarme « théorique corrigé du retard » (bandeau sarcelle) : même double condition (150/170 m, ≤ 3 min).
    6) Alarme « ligne du temps » : ≤ 150 m de la voie ET passage à votre point ≤ 3 min — sirène + voix, coupée par un simple toucher.
    7) Compte à rebours plein écran (60 s) : ≤ 150 m de la voie, dernière minute avant le passage — non fermable.
    8) Annonces vocales : ≤ 150 m de la voie (une fois), train à 5 min puis 3 min (une fois par train).
@@ -1017,47 +1017,47 @@ document.querySelectorAll('.lang-btn').forEach(btn=>{
 'use strict';
 const RISK=150, MAIN_TRAIN_DIST=1000, LOCK_N=3, GRACE=30*60*1000, ETA3=180, ACC=50, PAUSE=10*60*1000, DAY=86400;
 const T={
- ar:{title:'🚨 إنذارات القطار (GPS) — إنذارات قِطاري',on:'تفعيل الإنذارات',off:'إيقاف الإنذارات',test:'اختبار الإنذار',gps:'جارٍ البحث عن GPS…',err:'تعذّر الوصول إلى GPS — اسمح بالموقع',dist:'المسافة إلى السكة',acc:'دقة',next:'أقرب قطار إليك',none:'لا قطار قريب',dir:{aller:'ذهاب',retour:'عودة'},m:'م',
+ ar:{title:'🚨 إنذارات القطار (GPS)',on:'تفعيل الإنذارات',off:'إيقاف الإنذارات',gps:'جارٍ البحث عن GPS…',err:'تعذّر الوصول إلى GPS — اسمح بالموقع',dist:'المسافة إلى السكة',acc:'دقة',next:'أقرب قطار إليك',none:'لا قطار قريب',dir:{aller:'ذهاب',retour:'عودة'},m:'م',
   note:'الإنذارات مبنية على الجدول النظري فقط (بدون تتبع مباشر للقطارات) — لا تعتمد عليها وحدها، وانتبه دائماً عند السكة.',
   h:'🚨 خطر! 🚨',txt:'قطار على مقربة منك — ابتعد فوراً عن السكة!',dis:'فهمت، توقف عن الصوت',b3:'⚠️ القطار خلال أقل من 3 دقائق',pause:'⏸ إيقاف 10 د',eta:'الوقت التقديري لوصوله',
   trainAt:d=>'📍 القطار على بعد '+d+' منك الآن',cd:'⏱ الوصول المتوقع خلال ',
   lockA:(d,n,s)=>'🔒 '+d+'لن يتوقف الإنذار قبل ابتعادك عن السكة أكثر من 150م، أو بلوغ القطار "'+n+'" محطة "'+s+'" (حسب الجدول) ثم مرور 30 د.',
   lockB:(d,r)=>'✅ '+d+'القطار بلغ محطته التالية — سيتوقف الإنذار تلقائياً خلال '+r+' د تقريباً (أو فوراً إن ابتعدت عن السكة أكثر من 150م).',
   nowAt:d=>'القطار الآن على بعد '+d+' — ',
-  mods:'خطر تصادم محتمل — نتيجة كل وحدة بحث بمفردها (تكفي واحدة فقط):',modTheo:'الأقرب نظرياً (الجدول)',modCorr:'نظري مصحَّح بالتأخير',modLive:'SNCFT Live مباشر',noLive:'لا يوجد قطار مؤكد لهذه الوحدة الآن',flee:'ابتعد فوراً عن المسار!',
+  mods:'خطر تصادم محتمل — نتيجة كل وحدة بحث بمفردها (تكفي واحدة فقط):',modTheo:'الأقرب نظرياً (الجدول)',modCorr:'نظري مصحَّح بالتأخير',flee:'ابتعد فوراً عن المسار!',
   rtH:'🛤️⏱️🚨 قرب السكة + الموعد النظري',rtTxt:(d,s,m)=>'أنت على بعد '+d+' متر فقط من السكة، وحسب الجدول النظري قطار عند محطة "'+s+'" خلال '+m+' دقيقة تقريباً!',rtLock:(d,m)=>'🔒 لا تزال ضمن 150م من السكة (حالياً '+d+'م) وضمن 3 دقائق من الموعد النظري (تبقّى '+m+' د) — سيتوقف الإنذار تلقائياً بزوال أحد الشرطين.',
-  ncH:'🟣⚠️ إنذار مستقل — قطار نظري غير مؤكَّد إطلاقاً عبر SNCFT Live',ncTxt:(l,d,t)=>'حسب الجدول النظري البحت فقط (بلا أي تأكيد من SNCFT Live): '+l+' — على بعد '+d+t,
-  anH:'🟢⚠️ إنذار مستقل — قطار نظري مصحَّح بالتأخير (مؤكَّداً أو لا)',anTxt:(l,d,t)=>'حسب الجدول مصحَّحاً بالتأخير (بلا أي شرط تأكيد): '+l+' — على بعد '+d+t,
+  ncH:'🟣⚠️ إنذار مستقل — قطار نظري (الجدول فقط)',ncTxt:(l,d,t)=>'حسب الجدول النظري فقط: '+l+' — على بعد '+d+t,
+  anH:'🟢⚠️ إنذار مستقل — قطار نظري مصحَّح بالتأخير',anTxt:(l,d,t)=>'حسب الجدول مصحَّحاً بالتأخير: '+l+' — على بعد '+d+t,
   arr:m=>' — الوصول خلال ~'+m+' د',ok:'فهمت، أوقف هذا الإنذار',
   cdLabel:'خطر الموت الفوري — ابتعد عن السكة الحديدية فوراً!',cdTrain:n=>'القطار: '+n,
   kz:'🔔 إنذار خط الزمن — المس الشاشة لإيقافه',
   train:(t,dir)=>'قطار '+t+' ('+(dir==='aller'?'تونس البحرية ← المرسى':'المرسى ← تونس البحرية')+')'},
- fr:{title:'🚨 Alarmes train (GPS) — alarmes Qitari',on:'Activer les alarmes',off:'Désactiver les alarmes',test:'Tester l\'alarme',gps:'Recherche du GPS…',err:'GPS inaccessible — autorisez la localisation',dist:'Distance à la voie',acc:'précision',next:'Train le plus proche de vous',none:'Aucun train proche',dir:{aller:'aller',retour:'retour'},m:'m',
+ fr:{title:'🚨 Alarmes train (GPS)',on:'Activer les alarmes',off:'Désactiver les alarmes',gps:'Recherche du GPS…',err:'GPS inaccessible — autorisez la localisation',dist:'Distance à la voie',acc:'précision',next:'Train le plus proche de vous',none:'Aucun train proche',dir:{aller:'aller',retour:'retour'},m:'m',
   note:'Les alarmes reposent uniquement sur l\'horaire théorique (pas de suivi temps réel des trains) : ne vous y fiez pas seul et restez vigilant près de la voie.',
   h:'🚨 DANGER ! 🚨',txt:'Un train est tout proche — éloignez-vous immédiatement de la voie !',dis:'Compris, couper le son',b3:'⚠️ Train dans moins de 3 minutes',pause:'⏸ Pause 10 min',eta:'Arrivée estimée',
   trainAt:d=>'📍 Le train est à '+d+' de vous',cd:'⏱ Arrivée prévue dans ',
   lockA:(d,n,s)=>'🔒 '+d+'L\'alarme ne s\'arrêtera pas avant que vous soyez à plus de 150 m de la voie, ou que le train « '+n+' » ait atteint « '+s+' » (horaire) puis 30 min écoulées.',
   lockB:(d,r)=>'✅ '+d+'Le train a atteint sa station suivante — arrêt automatique dans ~'+r+' min (ou tout de suite si vous vous éloignez à plus de 150 m de la voie).',
   nowAt:d=>'Train à '+d+' — ',
-  mods:'Risque de collision — résultat de chaque module de recherche (un seul suffit) :',modTheo:'Plus proche théorique (horaire)',modCorr:'Théorique corrigé du retard',modLive:'SNCFT Live direct',noLive:'Aucun train confirmé pour ce module',flee:'Éloignez-vous immédiatement de la voie !',
+  mods:'Risque de collision — résultat de chaque module de recherche (un seul suffit) :',modTheo:'Plus proche théorique (horaire)',modCorr:'Théorique corrigé du retard',flee:'Éloignez-vous immédiatement de la voie !',
   rtH:'🛤️⏱️🚨 Près de la voie + horaire théorique',rtTxt:(d,s,m)=>'Vous êtes à seulement '+d+' m de la voie et, selon l\'horaire théorique, un train passe à « '+s+' » dans ~'+m+' min !',rtLock:(d,m)=>'🔒 Toujours à moins de 150 m de la voie (actuellement '+d+' m) et à moins de 3 min de l\'horaire théorique (reste '+m+' min) — arrêt automatique dès qu\'une des deux conditions disparaît.',
-  ncH:'🟣⚠️ Alarme indépendante — train théorique non confirmé par SNCFT Live',ncTxt:(l,d,t)=>'Selon l\'horaire théorique seul (aucune confirmation SNCFT Live) : '+l+' — à '+d+t,
-  anH:'🟢⚠️ Alarme indépendante — train théorique corrigé du retard (confirmé ou non)',anTxt:(l,d,t)=>'Selon l\'horaire corrigé du retard (sans condition de confirmation) : '+l+' — à '+d+t,
+  ncH:'🟣⚠️ Alarme indépendante — train théorique (horaire seul)',ncTxt:(l,d,t)=>'Selon l\'horaire théorique seul : '+l+' — à '+d+t,
+  anH:'🟢⚠️ Alarme indépendante — train théorique corrigé du retard',anTxt:(l,d,t)=>'Selon l\'horaire corrigé du retard : '+l+' — à '+d+t,
   arr:m=>' — arrivée dans ~'+m+' min',ok:'Compris, couper cette alarme',
   cdLabel:'DANGER DE MORT IMMÉDIAT — quittez la voie tout de suite !',cdTrain:n=>'Train : '+n,
   kz:'🔔 Alarme ligne du temps — touchez l\'écran pour l\'arrêter',
   train:(t,dir)=>'Rame de '+t+' ('+(dir==='aller'?'Tunis Marine → La Marsa':'La Marsa → Tunis Marine')+')'},
- en:{title:'🚨 Train alarms (GPS) — Qitari alarms',on:'Enable alarms',off:'Disable alarms',test:'Test alarm',gps:'Locating GPS…',err:'GPS unavailable — allow location access',dist:'Distance to track',acc:'accuracy',next:'Closest train to you',none:'No train nearby',dir:{aller:'outbound',retour:'inbound'},m:'m',
+ en:{title:'🚨 Train alarms (GPS)',on:'Enable alarms',off:'Disable alarms',gps:'Locating GPS…',err:'GPS unavailable — allow location access',dist:'Distance to track',acc:'accuracy',next:'Closest train to you',none:'No train nearby',dir:{aller:'outbound',retour:'inbound'},m:'m',
   note:'Alarms rely on the theoretical timetable only (no live train tracking): do not rely on them alone and stay alert near the track.',
   h:'🚨 DANGER! 🚨',txt:'A train is very close — move away from the track now!',dis:'Understood, mute',b3:'⚠️ Train in under 3 minutes',pause:'⏸ Pause 10 min',eta:'Estimated arrival',
   trainAt:d=>'📍 Train is '+d+' from you',cd:'⏱ Expected arrival in ',
   lockA:(d,n,s)=>'🔒 '+d+'The alarm will not stop until you are more than 150 m from the track, or train "'+n+'" has reached "'+s+'" (timetable) and 30 min have passed.',
   lockB:(d,r)=>'✅ '+d+'The train reached its next station — auto-stop in ~'+r+' min (or immediately if you move more than 150 m from the track).',
   nowAt:d=>'Train now '+d+' away — ',
-  mods:'Possible collision — result of each search module (one is enough):',modTheo:'Closest theoretical (timetable)',modCorr:'Theoretical delay-corrected',modLive:'SNCFT Live direct',noLive:'No confirmed train for this module',flee:'Move away from the track now!',
+  mods:'Possible collision — result of each search module (one is enough):',modTheo:'Closest theoretical (timetable)',modCorr:'Theoretical delay-corrected',flee:'Move away from the track now!',
   rtH:'🛤️⏱️🚨 Near the track + timetable',rtTxt:(d,s,m)=>'You are only '+d+' m from the track and, per the timetable, a train reaches "'+s+'" in ~'+m+' min!',rtLock:(d,m)=>'🔒 Still within 150 m of the track (now '+d+' m) and within 3 min of the timetable ('+m+' min left) — auto-stop as soon as either condition ends.',
-  ncH:'🟣⚠️ Independent alarm — theoretical train not confirmed by SNCFT Live',ncTxt:(l,d,t)=>'Pure timetable only (no SNCFT Live confirmation): '+l+' — '+d+' away'+t,
-  anH:'🟢⚠️ Independent alarm — delay-corrected theoretical train (confirmed or not)',anTxt:(l,d,t)=>'Delay-corrected timetable (no confirmation condition): '+l+' — '+d+' away'+t,
+  ncH:'🟣⚠️ Independent alarm — theoretical train (timetable only)',ncTxt:(l,d,t)=>'Timetable only: '+l+' — '+d+' away'+t,
+  anH:'🟢⚠️ Independent alarm — delay-corrected theoretical train',anTxt:(l,d,t)=>'Delay-corrected timetable: '+l+' — '+d+' away'+t,
   arr:m=>' — arrival in ~'+m+' min',ok:'Understood, stop this alarm',
   cdLabel:'IMMEDIATE MORTAL DANGER — get off the track now!',cdTrain:n=>'Train: '+n,
   kz:'🔔 Timeline alarm — touch the screen to stop it',
@@ -1081,7 +1081,7 @@ const L=()=>T[currentLang]||T.fr, SP=()=>P[currentLang]||P.fr, $=id=>document.ge
 const LANGTAG=()=>({ar:'ar-SA',fr:'fr-FR',en:'en-US'}[currentLang]||'fr-FR');
 const S={on:false,w:null,pos:null,acc:0,err:false,wake:null,ctx:null,test:false,lastND:Infinity,lastS:0};
 
-/* ================= Moteur vocal central (identique Qitari) : file FIFO, aucun message n'en coupe un autre ================= */
+/* ================= Moteur vocal central : file FIFO, aucun message n'en coupe un autre ================= */
 const V={speaking:false,q:[],voices:[]};
 function vRefresh(){ try{ V.voices=speechSynthesis.getVoices()||[]; }catch(e){} }
 if('speechSynthesis' in window){
@@ -1122,7 +1122,7 @@ function unlock(){
   try{ const c=ctx(); const o=c.createOscillator(),g=c.createGain(); g.gain.value=.0001; o.connect(g).connect(c.destination); o.start(); o.stop(c.currentTime+.05);}catch(e){}
   try{ if('speechSynthesis' in window){ const u=new SpeechSynthesisUtterance(' '); u.volume=.01; u.rate=10; speechSynthesis.speak(u);} }catch(e){}
 }
-/* sirène à balayage : chaque module a la sienne (types/fréquences distincts, comme dans Qitari) */
+/* sirène à balayage : chaque module a la sienne (types/fréquences distincts) */
 function makeSiren(type,vol,f1,f2,period){
   const s={o:null,start(){ if(s.o) return; const c=ctx(); if(!c) return; const o=c.createOscillator(),g=c.createGain(); o.type=type; g.gain.value=vol; o.connect(g).connect(c.destination); o.start();
     o._sw=setInterval(()=>{ if(c.state==='suspended') c.resume(); const t=c.currentTime; o.frequency.setValueAtTime(f1,t); o.frequency.linearRampToValueAtTime(f2,t+period/2000); o.frequency.linearRampToValueAtTime(f1,t+period/1000); },period);
@@ -1303,9 +1303,9 @@ function checkRailTheo(ud,now){
 }
 $('rtBtn').onclick=()=>{ if(R.active) vib([80,40,80]); };
 
-/* ================= 4) & 5) ALARMES INDÉPENDANTES « THÉORIQUE NON CONFIRMÉ » et « CORRIGÉ DU RETARD, CONFIRMÉ OU NON » =================
-   Aucune source SNCFT Live n'existe pour le TGM : aucune rame n'est jamais « confirmée » et le retard connu est toujours 0,
-   donc les deux modules suivent la même rame théorique — mais chacun garde son état, son bandeau, sa sirène et son bouton. */
+/* ================= 4) & 5) ALARMES INDÉPENDANTES « THÉORIQUE (HORAIRE SEUL) » et « CORRIGÉ DU RETARD » =================
+   Le TGM n'a qu'une source : l'horaire théorique (retard connu = 0) ; les deux modules suivent donc la même rame,
+   chacun avec son état, son bandeau, sa sirène et son bouton. */
 function makeIndep(pfx,siren,vibPat,vibEvery,hKey,txtKey){
   const X={active:false,muet:false,suivi:null,lastD:null,lastT:null,lastId:null,vt:null};
   function est(id,d){ const n=Date.now(); let m=null;
@@ -1378,8 +1378,7 @@ function tick(){
     if(danger&&nearRail&&!M.active){
       const l=L(); mainTrigger(near,[
         {label:'1️⃣ '+l.modTheo,d:nd,txt:trainName(near.tr)+' ('+fmtD(nd)+')'},
-        {label:'2️⃣ '+l.modCorr,d:nd,txt:trainName(near.tr)+' ('+fmtD(nd)+')'},
-        {label:'3️⃣ '+l.modLive,d:null,txt:l.noLive}]);
+        {label:'2️⃣ '+l.modCorr,d:nd,txt:trainName(near.tr)+' ('+fmtD(nd)+')'}]);
     }
     if(danger) tryLock(near,pr.frac); else if(!M.lock){ M.cId=null; M.cN=0; }
     if(M.active&&!M.test&&ud>RISK) mainStop();
@@ -1398,7 +1397,7 @@ function tick(){
 function indepCycle(){ if(!S.on) return; const now=nowSec(); try{ NC.cycle(now); }catch(e){} try{ AN.cycle(now); }catch(e){} }
 function render(pr,ud){
   const l=L(); $('alTitle').textContent=l.title; $('alNote').textContent=l.note;
-  $('alToggle').textContent=S.on?l.off:l.on; $('alToggle').classList.toggle('on',S.on); $('alTest').textContent=l.test;
+  $('alToggle').textContent=S.on?l.off:l.on; $('alToggle').classList.toggle('on',S.on);
   $('alH').textContent=l.h; $('alDismiss').textContent=l.dis; $('al3P').textContent=l.pause;
   $('rtH').textContent=l.rtH; $('rtBtn').textContent=l.ok; $('kzHint').textContent=l.kz;
   const st=$('alStatus');
@@ -1424,9 +1423,6 @@ function disable(){
   Object.values(SIR).forEach(s=>s.stop()); wakeOff(); const d=$('alUserDot'); if(d) d.style.display='none'; render();
 }
 $('alToggle').onclick=()=>S.on?disable():enable();
-$('alTest').onclick=()=>{ unlock(); M.test=true; const l=L();
-  mainTrigger(null,[{label:'1️⃣ '+l.modTheo,d:42,txt:'TEST (42 '+l.m+')'},{label:'2️⃣ '+l.modCorr,d:120,txt:'TEST (120 '+l.m+')'},{label:'3️⃣ '+l.modLive,d:38,txt:'TEST (38 '+l.m+')'}]);
-  $('alD').textContent=l.trainAt('42 '+l.m); };
 const _al=applyLang; applyLang=function(x){ _al(x); render(); };
 window.__tgmAlarmState=()=>({main:M.active,locked:!!M.lock,three:H.active,railTheo:R.active,nc:NC.active,an:AN.active,kz:K.active,countdown:C.active});
 window.__tgmAlarmTick=tick; window.__tgmAlarmIndep=indepCycle;
