@@ -354,6 +354,27 @@
     text-align:center;
     line-height:1.6;
   }
+
+/* ===== ALARMES (portées depuis Qitari) ===== */
+.al-card{margin-top:18px;padding:14px;border:1.5px solid var(--sea-deep);border-radius:12px;background:rgba(255,255,255,.72);backdrop-filter:blur(4px);}
+.al-card h3{margin:0 0 8px;font-size:15px;color:var(--sea-deep);}
+.al-row{display:flex;gap:8px;flex-wrap:wrap;}
+.al-btn{flex:1;min-width:120px;padding:9px 12px;border-radius:10px;border:1.5px solid var(--sea-deep);background:var(--sea-deep);color:#fff;font:600 13px inherit;font-family:inherit;cursor:pointer;}
+.al-btn.ghost{background:transparent;color:var(--sea-deep);}
+.al-btn.on{background:var(--terracotta);border-color:var(--terracotta);}
+.al-status{margin-top:10px;font-size:13px;line-height:1.5;color:var(--ink);min-height:38px;font-variant-numeric:tabular-nums;}
+.al-note{margin-top:8px;font-size:11.5px;color:var(--ink-soft);line-height:1.4;}
+#alertOverlay{display:none;position:fixed;inset:0;z-index:100000;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;text-align:center;color:#fff;background:#b3121a;animation:alFlash .7s infinite alternate;}
+@keyframes alFlash{from{background:#b3121a}to{background:#5c0a0f}}
+#alertOverlay h1{font-size:clamp(34px,9vw,56px);margin:0;}
+#alertOverlay p{font-size:18px;max-width:520px;margin:0;}
+#alD{font-size:clamp(40px,12vw,72px);font-weight:700;font-variant-numeric:tabular-nums;}
+#alertOverlay button{padding:14px 22px;border-radius:12px;border:2px solid #fff;background:rgba(255,255,255,.15);color:#fff;font:700 16px inherit;font-family:inherit;cursor:pointer;}
+#alLock{font-size:13px;min-height:18px;opacity:.9;}
+#al3{display:none;position:fixed;top:0;left:0;right:0;z-index:99999;padding:12px 14px;background:var(--terracotta);color:#fff;font-weight:700;align-items:center;justify-content:space-between;gap:10px;animation:alFlash .9s infinite alternate;}
+#al3 button{padding:7px 12px;border-radius:9px;border:1.5px solid #fff;background:transparent;color:#fff;font:600 12px inherit;font-family:inherit;cursor:pointer;white-space:nowrap;}
+#alUserDot{fill:#2f8fd1;stroke:#fff;stroke-width:2.5;}
+@media (prefers-reduced-motion:reduce){#alertOverlay,#al3{animation:none}}
 </style>
 </head>
 <body>
@@ -416,7 +437,20 @@
         <span><i class="sw" style="background:var(--terracotta-bright)"></i><span id="lblLegendAller">rame — sens aller</span></span>
         <span><i class="sw" style="background:var(--jasmine)"></i><span id="lblLegendRetour">rame — sens retour</span></span>
       </div>
-    </aside>
+    
+    <div class="al-card" id="locCard">
+      <h3 id="locTitle"></h3>
+      <div class="al-row"><button class="al-btn" id="locBtn" type="button"></button></div>
+      <div class="al-status" id="locOut"></div>
+    </div>
+
+    <div class="al-card" id="alCard">
+      <h3 id="alTitle"></h3>
+      <div class="al-row"><button class="al-btn" id="alToggle" type="button"></button><button class="al-btn ghost" id="alTest" type="button"></button></div>
+      <div class="al-status" id="alStatus"></div>
+      <div class="al-note" id="alNote"></div>
+    </div>
+  </aside>
   </main>
 
   <footer class="foot" id="footerText">
@@ -651,9 +685,14 @@ const trainPool = []; // {el, retour}
 let currentDir = 'aller';
 let dayOverride = null; // null = auto
 
+/* Jour de service AUTOMATIQUE : le service commence à 03:30 et finit vers 00:15,
+   donc entre 00:00 et 02:00 on est encore sur le jour de service de la veille. */
+function autoDayKey(){
+  return new Date(Date.now()-2*3600*1000).getDay()===0 ? 'sunday' : 'weekday';
+}
 function todayKey(){
   if(dayOverride) return dayOverride;
-  return new Date().getDay()===0 ? 'sunday' : 'weekday';
+  return autoDayKey();
 }
 function timeToSeconds(t){
   const [h,m,s]=t.split(':').map(Number);
@@ -856,6 +895,244 @@ document.querySelectorAll('.lang-btn').forEach(btn=>{
   setInterval(()=>{ updateClock(); }, 1000);
   setInterval(()=>{ refreshTrains(); }, 3000);
   setInterval(()=>{ updatePanel(); }, 15000);
+})();
+</script>
+
+<div id="alertOverlay" role="alertdialog" aria-live="assertive">
+  <h1 id="alH"></h1><p id="alT"></p><div id="alD"></div><div id="alE"></div>
+  <button id="alDismiss" type="button"></button><div id="alLock"></div>
+</div>
+<div id="al3" role="alert"><span id="al3T"></span><b id="al3C"></b><button id="al3P" type="button"></button></div>
+
+<script>
+/* ===== ALARMES portées de Qitari : sirène + voix + vibration + wake lock + notification ===== */
+(function(){
+'use strict';
+const AL={RISK:150,NEAR:150,ETA3:180,ACC:50,PAUSE:10*60*1000};
+const T={
+ ar:{title:'🚨 إنذارات القطار (GPS)',on:'تفعيل الإنذارات',off:'إيقاف الإنذارات',test:'اختبار الإنذار',gps:'جارٍ البحث عن GPS…',err:'تعذّر الوصول إلى GPS — اسمح بالموقع',dist:'المسافة إلى السكة',acc:'دقة',next:'أقرب قطار إليك',none:'لا قطار قريب',dir:{aller:'ذهاب',retour:'عودة'},m:'م',note:'الإنذارات مبنية على الجدول النظري فقط (بدون تتبع مباشر للقطارات) — لا تعتمد عليها وحدها، وانتبه دائماً عند السكة.',h:'🚨 خطر! 🚨',txt:'قطار على مقربة منك — ابتعد فوراً عن السكة!',dis:'فهمت، أوقف الصوت',lock:'لا يمكن الإيقاف: القطار لا يزال ضمن 150 م',b3:'⚠️ القطار خلال أقل من 3 دقائق',pause:'⏸ إيقاف 10 د',eta:'الوقت التقديري لوصوله'},
+ fr:{title:'🚨 Alarmes train (GPS)',on:'Activer les alarmes',off:'Désactiver les alarmes',test:'Tester l\'alarme',gps:'Recherche du GPS…',err:'GPS inaccessible — autorisez la localisation',dist:'Distance à la voie',acc:'précision',next:'Train le plus proche de vous',none:'Aucun train proche',dir:{aller:'aller',retour:'retour'},m:'m',note:'Les alarmes reposent uniquement sur l\'horaire théorique (pas de suivi temps réel des trains) : ne vous y fiez pas seul et restez vigilant près de la voie.',h:'🚨 DANGER ! 🚨',txt:'Un train est tout proche — éloignez-vous immédiatement de la voie !',dis:'Compris, couper le son',lock:'Impossible d\'arrêter : le train est encore à moins de 150 m',b3:'⚠️ Train dans moins de 3 minutes',pause:'⏸ Pause 10 min',eta:'Arrivée estimée'},
+ en:{title:'🚨 Train alarms (GPS)',on:'Enable alarms',off:'Disable alarms',test:'Test alarm',gps:'Locating GPS…',err:'GPS unavailable — allow location access',dist:'Distance to track',acc:'accuracy',next:'Closest train to you',none:'No train nearby',dir:{aller:'outbound',retour:'inbound'},m:'m',note:'Alarms rely on the theoretical timetable only (no live train tracking): do not rely on them alone and stay alert near the track.',h:'🚨 DANGER! 🚨',txt:'A train is very close — move away from the track now!',dis:'Understood, mute',lock:'Cannot stop: train is still within 150 m',b3:'⚠️ Train in under 3 minutes',pause:'⏸ Pause 10 min',eta:'Estimated arrival'}
+};
+const P={
+ ar:{d:'يا سيدي، انتبه، قطارٌ سيمرّ، احتموا، ابتعدوا عن السكة',t3:'انتباه، القطار سيصل خلال أقل من ثلاث دقائق',rem:'القطار يقترب',t5:'انتباه، القطار على بعد خمس دقائق منك',test:'هذا اختبار للصوت'},
+ fr:{d:'Attention, un train va passer, éloignez-vous de la voie !',t3:'Attention, le train arrive dans moins de trois minutes',rem:'Le train approche',t5:'Attention, un train dans cinq minutes',test:'Ceci est un test du son'},
+ en:{d:'Warning, a train is passing, move away from the track!',t3:'Attention, a train arrives in under three minutes',rem:'Train approaching',t5:'Attention, a train in five minutes',test:'This is a sound test'}
+};
+const L=()=>T[currentLang]||T.fr, $=id=>document.getElementById(id);
+const S={on:false,w:null,pos:null,acc:0,main:null,test:false,three:null,pauseUntil:0,cool:{},s5:{},wake:null,ctx:null,siren:null,lastV:0,lastS:0,rem:null};
+
+/* ---- géométrie de la ligne ---- */
+const kx=111320*Math.cos(stations[0].lat*Math.PI/180), ky=110540;
+const XY=stations.map(s=>[(s.lon-stations[0].lon)*kx,(s.lat-stations[0].lat)*ky]);
+function project(u){
+  const ux=(u.lon-stations[0].lon)*kx, uy=(u.lat-stations[0].lat)*ky; let b={d:Infinity,frac:0};
+  for(let i=0;i<XY.length-1;i++){
+    const [ax,ay]=XY[i],[bx,by]=XY[i+1],dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;
+    let t=l2?((ux-ax)*dx+(uy-ay)*dy)/l2:0; t=Math.max(0,Math.min(1,t));
+    const d=Math.hypot(ux-ax-t*dx,uy-ay-t*dy);
+    if(d<b.d) b={d,frac:(cumDist[i]+t*segDist[i])/totalDist};
+  }
+  return b;
+}
+function geoAt(f){
+  f=Math.max(0,Math.min(1,f)); let i=0; while(i<cumFrac.length-2&&cumFrac[i+1]<f) i++;
+  const f0=cumFrac[i],f1=cumFrac[i+1],t=f1>f0?(f-f0)/(f1-f0):0,a=stations[i],b=stations[i+1];
+  return {lat:a.lat+(b.lat-a.lat)*t,lon:a.lon+(b.lon-a.lon)*t};
+}
+/* ---- rames théoriques : plus proche de l'utilisateur + ETA au point de la voie le plus proche ---- */
+function scan(u,pr){
+  const key=autoDayKey(), now=nowSeconds(), DAY=86400, r={near:null,eta:null};
+  ['aller','retour'].forEach(dir=>schedule[key][dir].forEach(t=>{
+    const dep=timeToSeconds(t), id=key+dir+t, el=(now-dep+DAY)%DAY;
+    if(el<=TRIP_SECONDS){
+      const f=el/TRIP_SECONDS, d=haversine(u,geoAt(dir==='aller'?f:1-f))*1000;
+      if(!r.near||d<r.near.d) r.near={d,dir,id};
+    }
+    const fu=dir==='aller'?pr.frac:1-pr.frac; let e=((dep+fu*TRIP_SECONDS-now)%DAY+DAY)%DAY; if(e>DAY-120) e-=DAY;
+    if(e>=-20&&(!r.eta||e<r.eta.s)) r.eta={s:e,dir,id};
+  }));
+  return r;
+}
+/* ---- audio / voix / vibration ---- */
+function unlock(){
+  try{ if(!S.ctx) S.ctx=new (window.AudioContext||window.webkitAudioContext)(); if(S.ctx.state==='suspended') S.ctx.resume();
+    const o=S.ctx.createOscillator(),g=S.ctx.createGain(); g.gain.value=.0001; o.connect(g).connect(S.ctx.destination); o.start(); o.stop(S.ctx.currentTime+.05);}catch(e){}
+  try{ if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(' '); u.volume=.01; u.rate=10; speechSynthesis.speak(u);} }catch(e){}
+}
+function say(k,o){ try{ if(!('speechSynthesis' in window)) return; const u=new SpeechSynthesisUtterance(P[currentLang][k]);
+  u.lang={ar:'ar-SA',fr:'fr-FR',en:'en-US'}[currentLang]; u.rate=(o&&o.rate)||1; u.pitch=(o&&o.pitch)||1; speechSynthesis.cancel(); speechSynthesis.speak(u);}catch(e){} }
+function vib(p){ try{ if(navigator.vibrate) navigator.vibrate(p); }catch(e){} }
+function siren(on,vol){
+  if(!on){ if(S.siren){ clearInterval(S.siren._sw); try{S.siren.stop();S.siren.disconnect();}catch(e){} S.siren=null; } return; }
+  if(S.siren) return; unlock(); if(!S.ctx) return;
+  const o=S.ctx.createOscillator(),g=S.ctx.createGain(); o.type='sawtooth'; g.gain.value=vol; o.connect(g).connect(S.ctx.destination); o.start();
+  o._sw=setInterval(()=>{ if(S.ctx.state==='suspended') S.ctx.resume(); const t=S.ctx.currentTime;
+    o.frequency.setValueAtTime(880,t); o.frequency.linearRampToValueAtTime(440,t+.4); o.frequency.linearRampToValueAtTime(880,t+.8); },800);
+  S.siren=o;
+}
+async function wakeOn(){ try{ if('wakeLock' in navigator) S.wake=await navigator.wakeLock.request('screen'); }catch(e){} }
+function wakeOff(){ try{ if(S.wake){S.wake.release();S.wake=null;} }catch(e){} }
+document.addEventListener('visibilitychange',()=>{ if(S.on&&document.visibilityState==='visible') wakeOn(); });
+const fmt=s=>I18N[currentLang].countdown(Math.max(0,Math.round(s)));
+
+/* ---- alarme principale (≤150 m) : verrouillée tant que le train est dans la zone ---- */
+function startMain(id){
+  S.main={id}; $('alertOverlay').style.display='flex'; S.lastV=S.lastS=0;
+  siren(true,.5); say('d',{rate:.8,pitch:.6}); vib([400,150,400,150,400,150,800]);
+  try{ if('Notification' in window&&Notification.permission==='granted') new Notification(L().h,{body:L().txt,requireInteraction:true,tag:'tgm-alert'}); }catch(e){}
+  stopThree();
+}
+function stopMain(){ S.main=null; S.test=false; $('alertOverlay').style.display='none'; siren(false); }
+$('alDismiss').onclick=()=>{
+  if(S.test||!S.main||S.lastND>AL.RISK+30){ stopMain(); return; }
+  $('alLock').textContent=L().lock; vib([120,60,120]);
+};
+/* ---- alarme « train dans < 3 min » ---- */
+function startThree(e){
+  if(!S.three){ S.three=e.id; $('al3').style.display='flex'; siren(true,.3); say('t3',{rate:.9,pitch:.8}); vib([300,150,300,150,300]);
+    S.rem=setInterval(()=>{ vib([300,150,300]); say('rem',{rate:.9,pitch:.8}); },20000); }
+  $('al3T').textContent=L().b3; $('al3C').textContent=fmt(e.s);
+}
+function stopThree(){ if(S.three===null) return; S.three=null; clearInterval(S.rem); $('al3').style.display='none'; if(!S.main) siren(false); }
+$('al3P').onclick=()=>{ S.pauseUntil=Date.now()+AL.PAUSE; stopThree(); };
+
+/* ---- cycle principal ---- */
+function tick(){
+  if(!S.on||!S.pos){ render(); return; }
+  const u=S.pos, pr=project(u), sc=scan(u,pr), ea=Math.min(S.acc,AL.ACC);
+  const ud=Math.max(0,pr.d-ea), nd=sc.near?Math.max(0,sc.near.d-ea):Infinity; S.lastND=S.test?42:nd;
+  // repère de l'utilisateur sur la carte
+  let dot=$('alUserDot'); if(!dot){ dot=document.createElementNS('http://www.w3.org/2000/svg','circle'); dot.id='alUserDot'; dot.setAttribute('r','7'); svg.appendChild(dot); }
+  if(pr.d<1000){ const p=pointAtFraction(pr.frac); dot.setAttribute('cx',p.x); dot.setAttribute('cy',p.y); dot.style.display=''; } else dot.style.display='none';
+  // alarme principale
+  if(S.main){
+    if(!S.test&&nd>AL.RISK+30){ S.cool[S.main.id]=Date.now()+60000; stopMain(); }
+    else{ const now=Date.now(); $('alD').textContent=Math.round(S.test?42:nd)+' '+L().m; $('alT').textContent=L().txt;
+      if(now-S.lastV>3000){ vib([300,120,300]); S.lastV=now; } if(now-S.lastS>9000){ say('d',{rate:.8,pitch:.6}); S.lastS=now; }
+      if(!S.test&&nd>AL.RISK) $('alLock').textContent=''; }
+  } else if(ud<=AL.RISK&&nd<=AL.RISK&&(S.cool[sc.near.id]||0)<Date.now()){ startMain(sc.near.id); $('alD').textContent=Math.round(nd)+' '+L().m; $('alT').textContent=L().txt; }
+  // alarme 3 minutes + annonce 5 minutes
+  const e=sc.eta, zone=ud<=(S.three!==null?AL.NEAR+30:AL.NEAR);
+  if(!S.main&&zone&&e&&e.s<=AL.ETA3&&Date.now()>S.pauseUntil) startThree(e); else if(!e||!zone||e.s>AL.ETA3+20||Date.now()<=S.pauseUntil&&S.three) stopThree();
+  if(!S.main&&zone&&e&&e.s<=300&&e.s>AL.ETA3&&!S.s5[e.id]){ S.s5[e.id]=1; say('t5',{rate:.95}); vib([200,100,200]); }
+  render(pr,sc,ud);
+}
+function render(pr,sc,ud){
+  const l=L(); $('alTitle').textContent=l.title; $('alNote').textContent=l.note;
+  $('alToggle').textContent=S.on?l.off:l.on; $('alToggle').classList.toggle('on',S.on); $('alTest').textContent=l.test;
+  $('alH').textContent=l.h; $('alDismiss').textContent=l.dis; $('al3P').textContent=l.pause;
+  const st=$('alStatus');
+  if(!S.on){ st.textContent=''; return; }
+  if(!S.pos||!pr){ st.textContent=S.err?l.err:l.gps; return; }
+  const e=sc.eta;
+  st.innerHTML=l.dist+' : <b>'+Math.round(pr.d)+' '+l.m+'</b> ('+l.acc+' ±'+Math.round(S.acc)+' '+l.m+')<br>'+
+    (e?l.next+' : <b>'+fmt(e.s)+'</b> ('+l.dir[e.dir]+')':l.none);
+}
+/* ---- activation ---- */
+function enable(){
+  unlock(); wakeOn(); S.on=true; S.err=false;
+  try{ if('Notification' in window&&Notification.permission==='default') Notification.requestPermission(); }catch(e){}
+  if(!navigator.geolocation){ S.err=true; render(); return; }
+  S.w=navigator.geolocation.watchPosition(p=>{ S.pos={lat:p.coords.latitude,lon:p.coords.longitude}; S.acc=p.coords.accuracy||0; S.err=false; tick(); },
+    ()=>{ S.err=true; render(); },{enableHighAccuracy:true,maximumAge:2000,timeout:15000});
+  S.iv=setInterval(tick,1000); render();
+}
+function disable(){
+  S.on=false; if(S.w!=null) navigator.geolocation.clearWatch(S.w); clearInterval(S.iv); S.w=null; S.pos=null;
+  stopMain(); stopThree(); siren(false); wakeOff(); const d=$('alUserDot'); if(d) d.style.display='none'; render();
+}
+$('alToggle').onclick=()=>S.on?disable():enable();
+$('alTest').onclick=()=>{ unlock(); S.test=true; startMain('test'); $('alD').textContent='42 '+L().m; $('alT').textContent=L().txt; };
+const _al=applyLang; applyLang=function(x){ _al(x); render(); };
+render();
+})();
+</script>
+
+<script>
+/* ===== Ma position GPS : ville + gouvernorat (OpenStreetMap/Nominatim) + station la plus proche ===== */
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const T={
+ ar:{t:'📍 موقعي (GPS)',go:'حدّد موقعي',stop:'إيقاف',wait:'جارٍ تحديد الموقع…',err:'تعذّر الوصول إلى GPS — اسمح بالموقع',city:'المدينة',gov:'الولاية',area:'الحي',co:'الإحداثيات',st:'أقرب محطة',m:'م',km:'كم',off:'اسم المكان غير متاح (لا اتصال)'},
+ fr:{t:'📍 Ma position (GPS)',go:'Me localiser',stop:'Arrêter',wait:'Localisation en cours…',err:'GPS inaccessible — autorisez la localisation',city:'Ville',gov:'Gouvernorat',area:'Quartier',co:'Coordonnées',st:'Station la plus proche',m:'m',km:'km',off:'Nom du lieu indisponible (hors ligne)'},
+ en:{t:'📍 My position (GPS)',go:'Locate me',stop:'Stop',wait:'Locating…',err:'GPS unavailable — allow location access',city:'City',gov:'Governorate',area:'Area',co:'Coordinates',st:'Nearest station',m:'m',km:'km',off:'Place name unavailable (offline)'}
+};
+const L=()=>T[currentLang]||T.fr;
+const S={w:null,pos:null,acc:0,err:false,place:null,g:null,gt:0,gl:null,busy:false,fail:false};
+const esc=x=>String(x).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const row=(k,v)=>'<div><span style="color:var(--ink-soft)">'+esc(k)+' :</span> <b>'+esc(v)+'</b></div>';
+const clean=x=>x?String(x).replace(/^(Gouvernorat d[e']\s?|Governorate of |ولاية\s?)/i,'').trim():'';
+
+async function geo(){
+  if(S.busy||!S.pos) return; S.busy=true; const p=S.pos, lang=currentLang;
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&addressdetails=1&accept-language='+lang+'&lat='+p.lat+'&lon='+p.lon);
+    if(!r.ok) throw new Error(r.status); const a=(await r.json()).address||{};
+    const city=a.city||a.town||a.village||a.municipality||a.city_district||a.county||a.suburb||'';
+    const area=a.suburb||a.neighbourhood||a.quarter||a.hamlet||'';
+    S.place={city:clean(city),gov:clean(a.state||a.state_district||a.region||''),area:area&&area!==city?area:''};
+    S.g=p; S.gt=Date.now(); S.gl=lang; S.fail=false;
+  }catch(e){ S.fail=true; S.gt=Date.now(); }
+  S.busy=false; render();
+}
+function maybeGeo(){
+  const p=S.pos; if(!p) return;
+  const moved=S.g?haversine(S.g,p)*1000:Infinity;
+  if(!S.g||moved>200||S.gl!==currentLang||(S.fail&&Date.now()-S.gt>60000)) geo();
+}
+function nearest(){
+  let b=null; stations.forEach(s=>{ const d=haversine(S.pos,s)*1000; if(!b||d<b.d) b={d,s}; }); return b;
+}
+function render(){
+  const l=L(); $('locTitle').textContent=l.t; $('locBtn').textContent=S.w!=null?l.stop:l.go; $('locBtn').classList.toggle('on',S.w!=null);
+  const o=$('locOut');
+  if(S.w==null){ o.innerHTML=''; return; }
+  if(S.err){ o.textContent=l.err; return; }
+  if(!S.pos){ o.textContent=l.wait; return; }
+  let h='';
+  if(S.place&&(S.place.city||S.place.gov)){
+    if(S.place.city) h+=row(l.city,S.place.city);
+    if(S.place.gov) h+=row(l.gov,S.place.gov);
+    if(S.place.area) h+=row(l.area,S.place.area);
+  } else h+='<div>'+(S.fail?l.off:l.wait)+'</div>';
+  h+=row(l.co,S.pos.lat.toFixed(5)+', '+S.pos.lon.toFixed(5)+' (±'+Math.round(S.acc)+' '+l.m+')');
+  const n=nearest(), d=n.d>=1000?(n.d/1000).toFixed(1)+' '+l.km:Math.round(n.d)+' '+l.m;
+  h+=row(l.st,I18N[currentLang].stationName(n.s)+' — '+d);
+  o.innerHTML=h;
+}
+function start(){
+  if(S.w!=null) return; S.err=false;
+  if(!navigator.geolocation){ S.w=-1; S.err=true; render(); return; }
+  S.w=navigator.geolocation.watchPosition(p=>{ S.pos={lat:p.coords.latitude,lon:p.coords.longitude}; S.acc=p.coords.accuracy||0; S.err=false; render(); maybeGeo(); },
+    ()=>{ S.err=true; render(); },{enableHighAccuracy:true,maximumAge:5000,timeout:20000});
+  render();
+}
+function stop(){ if(S.w!=null&&S.w!==-1) navigator.geolocation.clearWatch(S.w); S.w=null; S.pos=null; S.place=null; S.g=null; render(); }
+$('locBtn').onclick=()=>S.w!=null?stop():start();
+const _l=applyLang; applyLang=function(x){ _l(x); render(); maybeGeo(); };
+render();
+/* si la localisation est déjà autorisée, on démarre seul (aucune fenêtre de permission) */
+try{ navigator.permissions&&navigator.permissions.query({name:'geolocation'}).then(r=>{ if(r.state==='granted') start(); }); }catch(e){}
+})();
+</script>
+
+<script>
+/* Bascule AUTOMATIQUE semaine/dimanche : suit le vrai jour, même page ouverte à minuit.
+   Un choix manuel du bouton reste valable jusqu'au prochain changement de jour de service. */
+(function(){
+  const dayId=()=>new Date(Date.now()-2*3600*1000).toDateString();
+  let last=dayId();
+  function sync(){
+    const k=dayId();
+    if(k!==last){ last=k; dayOverride=null; }
+    const cur=todayKey();
+    document.querySelectorAll('.day-btn').forEach(b=>b.classList.toggle('active', b.dataset.day===cur));
+    updatePanel(); refreshTrains();
+  }
+  setInterval(sync,20000);
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='visible') sync(); });
 })();
 </script>
 </body>
